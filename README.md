@@ -2,6 +2,8 @@
 
 Repository to package [Valve AMDGPU VRAM fixes](https://pixelcluster.github.io/VRAM-Mgmt-fixed/) for Fedora-based systems.
 
+This assumes the user is already running a patched kernel supporting the fixes: currently, using [kernel-cachyos](https://github.com/CachyOS/copr-linux-cachyos) works.
+ 
 ## download
 
 You can grab the .rpm files built from GitHub Actions in [releases](https://github.com/NelloKudo/vramfixes-fedora/releases).
