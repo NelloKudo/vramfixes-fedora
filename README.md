@@ -21,6 +21,17 @@ kf6-kwindowsystem-devel kf6-kconfig-devel kf6-kdbusaddons-devel kf6-kitemmodels-
 plasma-workspace-devel cargo rust dbus-devel
 ```
 
+## post-install
+
+After installing the RPMs, enable the dmemcg-booster services:
+
+```sh
+systemctl enable --now dmemcg-booster-system.service
+systemctl --user enable --now dmemcg-booster-user.service
+```
+
+`plasma-foreground-booster` autostarts via `/etc/xdg/autostart/` so no manual steps needed for that one.
+
 ## building locally
 
 ```sh
