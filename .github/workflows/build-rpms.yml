@@ -1,0 +1,87 @@
+name: Build RPMs
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: fedora:latest
+
+    steps:
+      - name: install dependencies
+        run: |
+          dnf install -y \
+            git cmake extra-cmake-modules \
+            qt6-qtbase-devel \
+            kf6-kwindowsystem-devel kf6-kconfig-devel kf6-kdbusaddons-devel \
+            kf6-kitemmodels-devel plasma-workspace-devel \
+            cargo rust dbus-devel pkg-config \
+            rpm-build systemd-rpm-macros \
+            findutils
+
+      - name: checkout with submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: fetch submodule tags
+        run: |
+          git -C kcgroups fetch --tags origin
+          git -C dmemcg-booster fetch --tags origin
+
+      - name: read versions
+        id: versions
+        run: |
+          BOOSTER_VER=$(sed -n 's/^version = "\([^"]*\)"/\1/p' dmemcg-booster/Cargo.toml | head -1)
+          KCGROUPS_VER=$(sed -n 's/^set(KF5_VERSION "\([^"]*\)").*/\1/p' kcgroups/CMakeLists.txt | head -1)
+          echo "booster=$BOOSTER_VER" >> "$GITHUB_OUTPUT"
+          echo "kcgroups=$KCGROUPS_VER" >> "$GITHUB_OUTPUT"
+          echo "dmemcg-booster version: $BOOSTER_VER"
+          echo "kcgroups version: $KCGROUPS_VER"
+
+      - name: create source tarballs
+        run: |
+          mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+          BOOSTER_VER=${{ steps.versions.outputs.booster }}
+
+          git -C kcgroups archive --prefix=kcgroups-dmemcg/ kcgroups-dmemcg-experimental \
+            | gzip > ~/rpmbuild/SOURCES/kcgroups-dmemcg.tar.gz
+
+          git -C kcgroups archive --prefix=plasma-foreground-booster/ booster-dmemcg-experimental \
+            | gzip > ~/rpmbuild/SOURCES/plasma-foreground-booster.tar.gz
+
+          git -C dmemcg-booster archive --prefix=dmemcg-booster-$BOOSTER_VER/ HEAD \
+            | gzip > ~/rpmbuild/SOURCES/dmemcg-booster-$BOOSTER_VER.tar.gz
+
+      - name: create rust vendor tarball
+        run: |
+          BOOSTER_VER=${{ steps.versions.outputs.booster }}
+          tmpdir=$(mktemp -d)
+          tar -xzf ~/rpmbuild/SOURCES/dmemcg-booster-$BOOSTER_VER.tar.gz -C "$tmpdir"
+          cd "$tmpdir/dmemcg-booster-$BOOSTER_VER"
+          cargo vendor vendor --locked
+          tar -czf ~/rpmbuild/SOURCES/dmemcg-booster-$BOOSTER_VER-vendor.tar.gz vendor/
+
+      - name: copy spec files
+        run: cp specs/*.spec ~/rpmbuild/SPECS/
+
+      - name: build kcgroups-dmemcg
+        run: |
+          rpmbuild -ba --define "pkg_version ${{ steps.versions.outputs.kcgroups }}" \
+            ~/rpmbuild/SPECS/kcgroups-dmemcg.spec
+
+      - name: build dmemcg-booster
+        run: |
+          rpmbuild -ba --define "pkg_version ${{ steps.versions.outputs.booster }}" \
+            ~/rpmbuild/SPECS/dmemcg-booster.spec
+
+      - name: upload rpms
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpms
+          path: ~/rpmbuild/RPMS/**/*.rpm
+          if-no-files-found: error

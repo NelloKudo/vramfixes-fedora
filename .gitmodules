@@ -1,0 +1,6 @@
+[submodule "dmemcg-booster"]
+	path = dmemcg-booster
+	url = https://gitlab.steamos.cloud/holo/dmemcg-booster.git
+[submodule "kcgroups"]
+	path = kcgroups
+	url = https://github.com/pixelcluster/kcgroups.git
