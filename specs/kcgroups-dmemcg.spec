@@ -1,3 +1,5 @@
+%define debug_package %{nil}
+
 Name:           kcgroups-dmemcg
 Version:        %{pkg_version}
 Release:        2%{?dist}

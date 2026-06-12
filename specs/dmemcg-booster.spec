@@ -1,3 +1,5 @@
+%define debug_package %{nil}
+
 Name:           dmemcg-booster
 Version:        %{pkg_version}
 Release:        1%{?dist}
